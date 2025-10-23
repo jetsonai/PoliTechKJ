@@ -1,0 +1,50 @@
+#TODO 1
+    if results.pose_landmarks:
+        # 랜드마크 렌더
+        mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+        # 좌/우 중 visibility 높은 쪽 선택 후 무릎 각도 계산
+        used_side = pick_side_by_visibility(results.pose_landmarks)
+        cur_angle = get_knee_angle_xy(results.pose_landmarks, used_side, w, h)
+
+        if cur_angle is not None:
+            angle_window.append(cur_angle)
+            angle_smoothed = sum(angle_window) / len(angle_window)
+        else:
+            angle_smoothed = None
+    else:
+        angle_smoothed = None
+
+#TODO 2
+    if angle_smoothed is not None:
+        if state == "UP":
+            if angle_smoothed <= DOWN_THRESHOLD:
+                hold_counter += 1
+                if hold_counter >= MIN_HOLD_FR:
+                    state = "DOWN"
+                    hold_counter = 0
+            else:
+                hold_counter = 0
+        elif state == "DOWN":
+            if angle_smoothed >= UP_THRESHOLD:
+                hold_counter += 1
+                if hold_counter >= MIN_HOLD_FR:
+                    state = "UP"
+                    reps += 1
+                    hold_counter = 0
+            else:
+                hold_counter = 0
+    else:
+        # 랜드마크가 안 잡히는 경우 홀드 리셋
+        hold_counter = 0
+
+    #TODO 3
+    y0 = 30
+    cv2.putText(frame, f"REPS: {reps}", (10, y0), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+    cv2.putText(frame, f"STATE: {state}", (10, y0 + 35), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (200, 255, 200), 2)
+    if used_side:
+        cv2.putText(frame, f"SIDE: {used_side.upper()}", (10, y0 + 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+    if cur_angle is not None:
+        cv2.putText(frame, f"ANGLE(knee): {cur_angle:.1f} deg", (10, y0 + 105), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 210), 2)
+        
+        
